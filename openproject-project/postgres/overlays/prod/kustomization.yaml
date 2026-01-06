@@ -27,6 +27,9 @@ patches:
       - op: replace
         path: /spec/resources/requests/storage
         value: 5Gi
+      - op: add
+        path: /spec/storageClassName
+        value: gp2
     target:
       kind: PersistentVolumeClaim
       name: lhw-openproject-postgres-backup

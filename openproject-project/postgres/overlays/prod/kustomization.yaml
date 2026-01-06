@@ -5,13 +5,15 @@ namespace: lhw-openproject-prod
 
 resources:
   - ../../base
+  # Make sure you create this file to define the ServiceAccount!
+  - serviceaccount.yaml 
 
 labels:
   - pairs:
       environment: production
 
 patches:
-  # Production environment: larger storage
+  # 1. Database Storage Patch
   - patch: |-
       - op: replace
         path: /spec/volume/storageClass
@@ -22,7 +24,8 @@ patches:
     target:
       kind: postgresql
       name: lhw-openproject-database
-  # Backup PVC larger in production
+
+  # 2. Backup PVC Patch
   - patch: |-
       - op: replace
         path: /spec/resources/requests/storage
@@ -33,27 +36,18 @@ patches:
     target:
       kind: PersistentVolumeClaim
       name: lhw-openproject-postgres-backup
-  # Vault annotations for postgres pods
+
+  # 3. Vault & ServiceAccount Patch (Combined)
   - patch: |-
+      - op: add
+        path: /spec/serviceAccountName
+        value: openproject-db-sa
       - op: add
         path: /spec/podAnnotations
         value:
           vault.hashicorp.com/agent-inject: "true"
           vault.hashicorp.com/role: "poc-role"
           vault.hashicorp.com/agent-inject-secret-db: "secret/data/poc/db"
-    target:
-      kind: postgresql
-    - patch: |-
-      - op: add
-        path: /spec/serviceAccountName
-        value: openproject-db-sa
-  - patch: |-
-      - op: add
-        path: /spec/serviceAccountName
-        value: openproject-db-sa
-      - op: add
-        path: /spec/podAnnotations/vault.hashicorp.com~1role
-        value: "poc-role"
     target:
       kind: postgresql
       name: lhw-openproject-database

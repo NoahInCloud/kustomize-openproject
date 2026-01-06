@@ -37,6 +37,7 @@ patches:
         value:
           vault.hashicorp.com/agent-inject: "true"
           vault.hashicorp.com/role: "poc-role"
+          vault.hashicorp.com/service: "http://vault.vault.svc:8200"
           vault.hashicorp.com/agent-inject-secret-db: "secret/data/poc/db"
     target:
       kind: postgresql

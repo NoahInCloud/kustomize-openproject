@@ -43,3 +43,17 @@ patches:
           vault.hashicorp.com/agent-inject-secret-db: "secret/data/poc/db"
     target:
       kind: postgresql
+    - patch: |-
+      - op: add
+        path: /spec/serviceAccountName
+        value: openproject-db-sa
+  - patch: |-
+      - op: add
+        path: /spec/serviceAccountName
+        value: openproject-db-sa
+      - op: add
+        path: /spec/podAnnotations/vault.hashicorp.com~1role
+        value: "poc-role"
+    target:
+      kind: postgresql
+      name: lhw-openproject-database

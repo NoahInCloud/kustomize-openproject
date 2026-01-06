@@ -18,13 +18,13 @@ patches:
         value: 2
     target:
       kind: Deployment
-      name: poc-memcached
+      name: lhw-openproject-memcached
   # Vault POD_INJECTION annotations for runtime secret injection
   - patch: |-
       apiVersion: apps/v1
       kind: Deployment
       metadata:
-        name: poc-memcached
+        name: lhw-openproject-memcached
       spec:
         template:
           metadata:

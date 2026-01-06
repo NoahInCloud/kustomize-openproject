@@ -1,30 +1,30 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-namespace: lhw-openproject-prod
+namespace: lhw-openproject-test
 
 resources:
   - ../../base
 
 labels:
   - pairs:
-      environment: production
+      environment: test
 
 patches:
-  # Set replicas for production environment
+  # Set replicas for test environment
   - patch: |-
       - op: replace
         path: /spec/replicas
-        value: 2
+        value: 1
     target:
       kind: Deployment
-      name: poc-memcached
+      name: lhw-openproject-memcached
   # Vault POD_INJECTION annotations for runtime secret injection
   - patch: |-
       apiVersion: apps/v1
       kind: Deployment
       metadata:
-        name: poc-memcached
+        name: lhw-openproject-memcached
       spec:
         template:
           metadata:

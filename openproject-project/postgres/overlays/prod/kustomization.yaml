@@ -1,0 +1,42 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: lhw-openproject-prod
+
+resources:
+  - ../../base
+
+labels:
+  - pairs:
+      environment: production
+
+patches:
+  # Production environment: larger storage
+  - patch: |-
+      - op: replace
+        path: /spec/volume/storageClass
+        value: gp2
+      - op: replace
+        path: /spec/volume/storage
+        value: 10Gi
+    target:
+      kind: postgresql
+      name: lhw-openproject-database
+  # Backup PVC larger in production
+  - patch: |-
+      - op: replace
+        path: /spec/resources/requests/storage
+        value: 5Gi
+    target:
+      kind: PersistentVolumeClaim
+      name: lhw-openproject-postgres-backup
+  # Vault annotations for postgres pods
+  - patch: |-
+      - op: add
+        path: /spec/podAnnotations
+        value:
+          vault.hashicorp.com/agent-inject: "true"
+          vault.hashicorp.com/role: "poc-role"
+          vault.hashicorp.com/agent-inject-secret-db: "secret/data/poc/db"
+    target:
+      kind: postgresql

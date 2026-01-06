@@ -1,0 +1,856 @@
+---
+# Source: openproject/templates/serviceaccount.yaml
+apiVersion: "v1"
+kind: "ServiceAccount"
+metadata:
+  name: lhw-openproject
+  namespace: "default"
+  labels:
+    app.kubernetes.io/instance: lhw-openproject
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: openproject
+    app.kubernetes.io/version: 16.6.3
+    helm.sh/chart: openproject-11.6.1
+    app.kubernetes.io/component: openproject
+...
+---
+# Source: openproject/templates/secret_core.yaml
+apiVersion: "v1"
+kind: "Secret"
+metadata:
+  name: "lhw-openproject-core"
+  namespace: "default"
+  labels:
+    app.kubernetes.io/instance: lhw-openproject
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: openproject
+    app.kubernetes.io/version: 16.6.3
+    helm.sh/chart: openproject-11.6.1
+    app.kubernetes.io/component: openproject
+data: # reset data to make sure only keys defined below remain
+stringData:
+  DATABASE_HOST: "lhw-openproject-database.lhw-openproject-prod.svc.cluster.local"
+  DATABASE_PORT: "5432"
+  DATABASE_URL: "postgresql://opdbuser@lhw-openproject-database.lhw-openproject-prod.svc.cluster.local:5432/opdb"
+  OPENPROJECT_SEED_ADMIN_USER_PASSWORD: "admin"
+  OPENPROJECT_SEED_ADMIN_USER_PASSWORD_RESET: "true"
+  OPENPROJECT_SEED_ADMIN_USER_NAME: "LHW OpenProject Admin"
+  OPENPROJECT_SEED_ADMIN_USER_MAIL: "pmo@wiesbaden.de"
+  OPENPROJECT_HTTPS: "true"
+  OPENPROJECT_SEED_LOCALE: "de"
+  OPENPROJECT_HSTS: "true"
+  OPENPROJECT_RAILS__CACHE__STORE: "memcache"
+  OPENPROJECT_RAILS__RELATIVE__URL__ROOT: ""
+  POSTGRES_STATEMENT_TIMEOUT: "120s"
+...
+---
+# Source: openproject/templates/secret_environment.yaml
+apiVersion: "v1"
+kind: "Secret"
+metadata:
+  name: "lhw-openproject-environment"
+  namespace: "default"
+  labels:
+    app.kubernetes.io/instance: lhw-openproject
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: openproject
+    app.kubernetes.io/version: 16.6.3
+    helm.sh/chart: openproject-11.6.1
+    app.kubernetes.io/component: openproject
+data: # reset data to make sure only keys defined below remain
+stringData:
+  # Additional environment variables
+  OPENPROJECT_HTTPS: "false"
+...
+---
+# Source: openproject/templates/secret_memcached.yaml
+apiVersion: "v1"
+kind: "Secret"
+metadata:
+  name: "lhw-openproject-memcached"
+  namespace: "default"
+  labels:
+    app.kubernetes.io/instance: lhw-openproject
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: openproject
+    app.kubernetes.io/version: 16.6.3
+    helm.sh/chart: openproject-11.6.1
+    app.kubernetes.io/component: memcached
+data: # reset data to make sure only keys defined below remain
+stringData:
+  OPENPROJECT_CACHE__MEMCACHE__SERVER: "lhw-openproject-memcached-prod.lhw-openproject-prod.svc.cluster.local:11211"
+...
+---
+# Source: openproject/templates/persistentvolumeclaim.yaml
+apiVersion: "v1"
+kind: "PersistentVolumeClaim"
+metadata:
+  name: lhw-openproject
+  namespace: "default"
+  labels:
+    app.kubernetes.io/instance: lhw-openproject
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: openproject
+    app.kubernetes.io/version: 16.6.3
+    helm.sh/chart: openproject-11.6.1
+    app.kubernetes.io/component: openproject
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: gp2
+  resources:
+    requests:
+      storage: "2Gi"
+...
+---
+# Source: openproject/templates/service.yaml
+apiVersion: "v1"
+kind: "Service"
+metadata:
+  name: lhw-openproject
+  namespace: "default"
+  labels:
+    app.kubernetes.io/instance: lhw-openproject
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: openproject
+    app.kubernetes.io/version: 16.6.3
+    helm.sh/chart: openproject-11.6.1
+    app.kubernetes.io/component: openproject
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: openproject
+    app.kubernetes.io/instance: lhw-openproject
+    openproject/process: web
+...
+---
+# Source: openproject/templates/cron-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lhw-openproject-cron
+  namespace: "default"
+  labels:
+    app.kubernetes.io/instance: lhw-openproject
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: openproject
+    app.kubernetes.io/version: 16.6.3
+    helm.sh/chart: openproject-11.6.1
+    openproject/process: cron
+    app.kubernetes.io/component: cron
+spec:
+  replicas: 0
+  strategy:
+    type: "Recreate"
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: lhw-openproject
+      app.kubernetes.io/name: openproject
+      openproject/process: cron
+      app.kubernetes.io/component: cron
+  template:
+    metadata:
+      annotations:
+        
+        # annotate pods with env value checksums so changes trigger re-deployments
+        
+        checksum/env-core: d35c09e8aaa22a751995ce47ef3410f48c2eba234caf9b2b3975cbe885f500d4
+        checksum/env-memcached: 12042412432d45ed4f9edf440d104f9c9050ddaa7f069e904ee0abd2dd7c02f3
+        checksum/env-oidc: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
+        checksum/env-s3: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
+        checksum/env-environment: f40e36e6613bab43517de0ac95ff2c22cb0727e06e773961c940d20f20735b51
+        checksum/env-cron-environment: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
+      labels:
+        app.kubernetes.io/instance: lhw-openproject
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: openproject
+        app.kubernetes.io/version: 16.6.3
+        helm.sh/chart: openproject-11.6.1
+        openproject/process: cron
+        app.kubernetes.io/component: cron
+    spec:            
+      securityContext:
+        fsGroup: 1000
+      serviceAccountName: lhw-openproject
+      volumes:        
+        - name: tmp
+          # we can't use emptyDir due to the sticky bit issue
+          # see: https://github.com/kubernetes/kubernetes/issues/110835
+          ephemeral:
+            volumeClaimTemplate:
+              metadata:
+                creationTimestamp: null
+              spec:
+                accessModes: ["ReadWriteOnce"]
+                storageClassName: gp2
+                resources:
+                  requests:
+                    storage: 1Gi
+        - name: app-tmp
+          # we can't use emptyDir due to the sticky bit / world writable issue
+          # see: https://github.com/kubernetes/kubernetes/issues/110835
+          ephemeral:
+            volumeClaimTemplate:
+              metadata:
+                creationTimestamp: null
+              spec:
+                accessModes: ["ReadWriteOnce"]
+                storageClassName: gp2
+                resources:
+                  requests:
+                    storage: 1Gi
+        - name: "data"
+          persistentVolumeClaim:
+            claimName: lhw-openproject        
+      initContainers:
+        - name: wait-for-db          
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+            runAsGroup: 1000
+            runAsNonRoot: true
+            runAsUser: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          image: docker.io/openproject/openproject:16.6.3-slim
+          imagePullPolicy: Always
+          envFrom:
+            - secretRef:
+                name: lhw-openproject-core
+            - secretRef:
+                name: lhw-openproject-memcached
+            - secretRef:
+                name: lhw-openproject-environment
+            - secretRef:
+                name: lhw-openproject-cron-environment
+          env:
+            
+            - name: OPENPROJECT_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: lhw-openproject-prod-psql-credentials
+                  key: password
+          args:
+            - bash
+            - /app/docker/prod/wait-for-db
+          resources:
+            limits:
+              memory: 1Gi
+            requests:
+              memory: 500Mi
+          volumeMounts:            
+            - mountPath: /tmp
+              name: tmp
+            - mountPath: /app/tmp
+              name: app-tmp
+      containers:
+        - name: "cron"          
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+            runAsGroup: 1000
+            runAsNonRoot: true
+            runAsUser: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          image: docker.io/openproject/openproject:16.6.3-slim
+          imagePullPolicy: Always
+          envFrom:
+            - secretRef:
+                name: lhw-openproject-core
+            - secretRef:
+                name: lhw-openproject-memcached
+            - secretRef:
+                name: lhw-openproject-environment
+            - secretRef:
+                name: lhw-openproject-cron-environment
+          args:
+            - bash
+            - /app/docker/prod/cron
+          env:
+            
+            - name: OPENPROJECT_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: lhw-openproject-prod-psql-credentials
+                  key: password
+          volumeMounts:            
+            - mountPath: /tmp
+              name: tmp
+            - mountPath: /app/tmp
+              name: app-tmp
+            - name: "data"
+              mountPath: "/var/openproject/assets"            
+          resources:
+            limits:
+              cpu: "2"
+              memory: 2Gi
+            requests:
+              cpu: 250m
+              memory: 256Mi
+---
+# Source: openproject/templates/web-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lhw-openproject-web
+  namespace: "default"
+  labels:
+    app.kubernetes.io/instance: lhw-openproject
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: openproject
+    app.kubernetes.io/version: 16.6.3
+    helm.sh/chart: openproject-11.6.1
+    openproject/process: web
+    app.kubernetes.io/component: web
+spec:
+  replicas: 1
+  strategy:
+    
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: lhw-openproject
+      app.kubernetes.io/name: openproject
+      openproject/process: web
+      app.kubernetes.io/component: web
+  template:
+    metadata:
+      annotations:
+        
+        # annotate pods with env value checksums so changes trigger re-deployments
+        
+        checksum/env-core: d35c09e8aaa22a751995ce47ef3410f48c2eba234caf9b2b3975cbe885f500d4
+        checksum/env-memcached: 12042412432d45ed4f9edf440d104f9c9050ddaa7f069e904ee0abd2dd7c02f3
+        checksum/env-oidc: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
+        checksum/env-s3: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
+        checksum/env-environment: f40e36e6613bab43517de0ac95ff2c22cb0727e06e773961c940d20f20735b51
+      labels:
+        app.kubernetes.io/instance: lhw-openproject
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: openproject
+        app.kubernetes.io/version: 16.6.3
+        helm.sh/chart: openproject-11.6.1
+        openproject/process: web
+        app.kubernetes.io/component: web
+    spec:            
+      securityContext:
+        fsGroup: 1000
+      serviceAccountName: lhw-openproject
+      volumes:        
+        - name: tmp
+          # we can't use emptyDir due to the sticky bit issue
+          # see: https://github.com/kubernetes/kubernetes/issues/110835
+          ephemeral:
+            volumeClaimTemplate:
+              metadata:
+                creationTimestamp: null
+              spec:
+                accessModes: ["ReadWriteOnce"]
+                storageClassName: gp2
+                resources:
+                  requests:
+                    storage: 1Gi
+        - name: app-tmp
+          # we can't use emptyDir due to the sticky bit / world writable issue
+          # see: https://github.com/kubernetes/kubernetes/issues/110835
+          ephemeral:
+            volumeClaimTemplate:
+              metadata:
+                creationTimestamp: null
+              spec:
+                accessModes: ["ReadWriteOnce"]
+                storageClassName: gp2
+                resources:
+                  requests:
+                    storage: 1Gi
+        - name: "data"
+          persistentVolumeClaim:
+            claimName: lhw-openproject        
+      initContainers:
+        - name: wait-for-db          
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+            runAsGroup: 1000
+            runAsNonRoot: true
+            runAsUser: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          image: docker.io/openproject/openproject:16.6.3-slim
+          imagePullPolicy: Always
+          envFrom:
+            - secretRef:
+                name: lhw-openproject-core
+            - secretRef:
+                name: lhw-openproject-memcached
+            - secretRef:
+                name: lhw-openproject-environment
+          env:
+            
+            - name: OPENPROJECT_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: lhw-openproject-prod-psql-credentials
+                  key: password
+          args:
+            - /app/docker/prod/wait-for-db
+          resources:
+            limits:
+              memory: 1Gi
+            requests:
+              memory: 500Mi
+          volumeMounts:            
+            - mountPath: /tmp
+              name: tmp
+            - mountPath: /app/tmp
+              name: app-tmp
+      containers:
+        - name: "openproject"          
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+            runAsGroup: 1000
+            runAsNonRoot: true
+            runAsUser: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          image: docker.io/openproject/openproject:16.6.3-slim
+          imagePullPolicy: Always
+          envFrom:
+            - secretRef:
+                name: lhw-openproject-core
+            - secretRef:
+                name: lhw-openproject-memcached
+            - secretRef:
+                name: lhw-openproject-environment
+          env:
+            
+            - name: OPENPROJECT_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: lhw-openproject-prod-psql-credentials
+                  key: password
+          args:
+            - /app/docker/prod/web
+          volumeMounts:            
+            - mountPath: /tmp
+              name: tmp
+            - mountPath: /app/tmp
+              name: app-tmp
+            - name: "data"
+              mountPath: "/var/openproject/assets"            
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: "/health_checks/default"
+              port: 8080
+              httpHeaders:
+                # required otherwise health check will return 404 because health check is done using the Pod IP, which may cause issues with downstream variants
+                - name: Host
+                  value: localhost
+            initialDelaySeconds: 120
+            timeoutSeconds: 3
+            periodSeconds: 15
+            failureThreshold: 3
+            successThreshold: 1
+          readinessProbe:
+            httpGet:
+              path: "/health_checks/default"
+              port: 8080
+              httpHeaders:
+                # required otherwise health check will return 404 because health check is done using the Pod IP, which may cause issues with downstream variants
+                - name: Host
+                  value: localhost
+            initialDelaySeconds: 0
+            timeoutSeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+            successThreshold: 1
+          startupProbe:
+            httpGet:
+              path: "/health_checks/default"
+              port: 8080
+              httpHeaders:
+                # required otherwise health check will return 404 because health check is done using the Pod IP, which may cause issues with downstream variants
+                - name: Host
+                  value: localhost
+            initialDelaySeconds: 60
+            timeoutSeconds: 5
+            periodSeconds: 15
+            failureThreshold: 10
+            successThreshold: 1
+          resources:
+            limits:
+              cpu: "1"
+              memory: 1Gi
+            requests:
+              cpu: 250m
+              memory: 512Mi
+---
+# Source: openproject/templates/worker-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lhw-openproject-worker-default
+  namespace: "default"
+  labels:
+    app.kubernetes.io/instance: lhw-openproject
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: openproject
+    app.kubernetes.io/version: 16.6.3
+    helm.sh/chart: openproject-11.6.1
+    openproject/process: worker-default
+    app.kubernetes.io/component: worker-default
+spec:
+  replicas: 1
+  strategy:
+    
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: lhw-openproject
+      app.kubernetes.io/name: openproject
+      openproject/process: worker-default
+      app.kubernetes.io/component: worker-default
+  template:
+    metadata:
+      annotations:
+        
+        # annotate pods with env value checksums so changes trigger re-deployments
+        
+        checksum/env-core: d35c09e8aaa22a751995ce47ef3410f48c2eba234caf9b2b3975cbe885f500d4
+        checksum/env-memcached: 12042412432d45ed4f9edf440d104f9c9050ddaa7f069e904ee0abd2dd7c02f3
+        checksum/env-oidc: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
+        checksum/env-s3: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
+        checksum/env-environment: f40e36e6613bab43517de0ac95ff2c22cb0727e06e773961c940d20f20735b51
+      labels:
+        app.kubernetes.io/instance: lhw-openproject
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: openproject
+        app.kubernetes.io/version: 16.6.3
+        helm.sh/chart: openproject-11.6.1
+        openproject/process: worker-default
+        app.kubernetes.io/component: worker-default
+    spec:            
+      securityContext:
+        fsGroup: 1000
+      serviceAccountName: lhw-openproject
+      volumes:        
+        - name: tmp
+          # we can't use emptyDir due to the sticky bit issue
+          # see: https://github.com/kubernetes/kubernetes/issues/110835
+          ephemeral:
+            volumeClaimTemplate:
+              metadata:
+                creationTimestamp: null
+              spec:
+                accessModes: ["ReadWriteOnce"]
+                storageClassName: gp2
+                resources:
+                  requests:
+                    storage: 1Gi
+        - name: app-tmp
+          # we can't use emptyDir due to the sticky bit / world writable issue
+          # see: https://github.com/kubernetes/kubernetes/issues/110835
+          ephemeral:
+            volumeClaimTemplate:
+              metadata:
+                creationTimestamp: null
+              spec:
+                accessModes: ["ReadWriteOnce"]
+                storageClassName: gp2
+                resources:
+                  requests:
+                    storage: 1Gi
+        - name: "data"
+          persistentVolumeClaim:
+            claimName: lhw-openproject        
+      initContainers:
+        - name: wait-for-db          
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+            runAsGroup: 1000
+            runAsNonRoot: true
+            runAsUser: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          image: docker.io/openproject/openproject:16.6.3-slim
+          imagePullPolicy: Always
+          envFrom:
+            - secretRef:
+                name: lhw-openproject-core
+            - secretRef:
+                name: lhw-openproject-memcached
+            - secretRef:
+                name: lhw-openproject-environment
+          env:
+            
+            - name: OPENPROJECT_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: lhw-openproject-prod-psql-credentials
+                  key: password
+          args:
+            - bash
+            - /app/docker/prod/wait-for-db
+          resources:
+            limits:
+              memory: 1Gi
+            requests:
+              memory: 500Mi
+          volumeMounts:            
+            - mountPath: /tmp
+              name: tmp
+            - mountPath: /app/tmp
+              name: app-tmp
+      containers:
+        - name: "openproject"          
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+            runAsGroup: 1000
+            runAsNonRoot: true
+            runAsUser: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          image: docker.io/openproject/openproject:16.6.3-slim
+          imagePullPolicy: Always
+          envFrom:
+            - secretRef:
+                name: lhw-openproject-core
+            - secretRef:
+                name: lhw-openproject-memcached
+            - secretRef:
+                name: lhw-openproject-environment
+          args:
+            - bash
+            - /app/docker/prod/worker
+          env:
+            
+            - name: OPENPROJECT_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: lhw-openproject-prod-psql-credentials
+                  key: password
+            - name: "OPENPROJECT_GOOD_JOB_QUEUES"
+              value: ""
+          volumeMounts:            
+            - mountPath: /tmp
+              name: tmp
+            - mountPath: /app/tmp
+              name: app-tmp
+            - name: "data"
+              mountPath: "/var/openproject/assets"            
+          resources:
+            limits:
+              cpu: "1"
+              memory: 1Gi
+            requests:
+              cpu: 250m
+              memory: 512Mi
+---
+# Source: openproject/templates/seeder-job.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: lhw-openproject-seeder-1
+  namespace: "default"
+  labels:
+    app.kubernetes.io/instance: lhw-openproject
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: openproject
+    app.kubernetes.io/version: 16.6.3
+    helm.sh/chart: openproject-11.6.1
+    app.kubernetes.io/component: seeder
+spec:
+  ttlSecondsAfterFinished: 6000
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: lhw-openproject
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: openproject
+        app.kubernetes.io/version: 16.6.3
+        helm.sh/chart: openproject-11.6.1
+        openproject/process: seeder
+        app.kubernetes.io/component: seeder
+    spec:
+      serviceAccountName: lhw-openproject            
+      securityContext:
+        fsGroup: 1000
+      volumes:        
+        - name: tmp
+          # we can't use emptyDir due to the sticky bit issue
+          # see: https://github.com/kubernetes/kubernetes/issues/110835
+          ephemeral:
+            volumeClaimTemplate:
+              metadata:
+                creationTimestamp: null
+              spec:
+                accessModes: ["ReadWriteOnce"]
+                storageClassName: gp2
+                resources:
+                  requests:
+                    storage: 1Gi
+        - name: app-tmp
+          # we can't use emptyDir due to the sticky bit / world writable issue
+          # see: https://github.com/kubernetes/kubernetes/issues/110835
+          ephemeral:
+            volumeClaimTemplate:
+              metadata:
+                creationTimestamp: null
+              spec:
+                accessModes: ["ReadWriteOnce"]
+                storageClassName: gp2
+                resources:
+                  requests:
+                    storage: 1Gi
+        - name: "data"
+          persistentVolumeClaim:
+            claimName: lhw-openproject        
+      initContainers:
+        - name: check-db-ready
+          image: "docker.io/postgres:17"
+          imagePullPolicy: Always
+          command: [
+            'sh',
+            '-c',
+            'until pg_isready -h $DATABASE_HOST -p $DATABASE_PORT -U opdbuser; do echo "waiting for database $DATABASE_HOST:$DATABASE_PORT"; sleep 2; done;'
+          ]
+          envFrom:
+            - secretRef:
+                name: lhw-openproject-core
+            - secretRef:
+                name: lhw-openproject-memcached
+            - secretRef:
+                name: lhw-openproject-environment
+          env:
+            
+            - name: OPENPROJECT_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: lhw-openproject-prod-psql-credentials
+                  key: password
+          resources:
+            limits:
+              memory: 200Mi
+            requests:
+              memory: 200Mi
+          volumeMounts:            
+            - mountPath: /tmp
+              name: tmp
+            - mountPath: /app/tmp
+              name: app-tmp          
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+            runAsGroup: 1000
+            runAsNonRoot: true
+            runAsUser: 1000
+            seccompProfile:
+              type: RuntimeDefault
+      containers:
+        - name: seeder
+          image: "docker.io/openproject/openproject:16.6.3-slim"
+          imagePullPolicy: Always
+          args:
+            - bash
+            - /app/docker/prod/seeder
+          envFrom:
+            - secretRef:
+                name: lhw-openproject-core
+            - secretRef:
+                name: lhw-openproject-memcached
+            - secretRef:
+                name: lhw-openproject-environment
+          env:
+            
+            - name: OPENPROJECT_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: lhw-openproject-prod-psql-credentials
+                  key: password
+          resources:
+            limits:
+              memory: 512Mi
+            requests:
+              memory: 512Mi
+          volumeMounts:            
+            - mountPath: /tmp
+              name: tmp
+            - mountPath: /app/tmp
+              name: app-tmp
+            - name: "data"
+              mountPath: "/var/openproject/assets"                      
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+            runAsGroup: 1000
+            runAsNonRoot: true
+            runAsUser: 1000
+            seccompProfile:
+              type: RuntimeDefault
+      restartPolicy: OnFailure
+---
+# Source: openproject/templates/tests/test-connection.yaml
+apiVersion: "v1"
+kind: "Pod"
+metadata:
+  name: "lhw-openproject-test-connection"
+  namespace: "default"
+  labels:
+    app.kubernetes.io/instance: lhw-openproject
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: openproject
+    app.kubernetes.io/version: 16.6.3
+    helm.sh/chart: openproject-11.6.1
+    app.kubernetes.io/component: test-connection
+  annotations:
+    "helm.sh/hook": test
+spec:
+  serviceAccountName: lhw-openproject
+  containers:
+    - name: "wget"
+      image: "busybox"
+      imagePullPolicy: Always
+      command: ['wget']
+      args:
+        - '--no-verbose'
+        - '--tries=1'
+        - '--spider'
+        - 'lhw-openproject:8080/health_check'
+  restartPolicy: "Never"
+...

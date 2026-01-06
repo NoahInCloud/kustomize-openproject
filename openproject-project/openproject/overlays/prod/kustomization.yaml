@@ -1,0 +1,40 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: lhw-openproject-prod
+
+resources:
+  - ../../base
+
+labels:
+  - pairs:
+      environment: production
+
+patches:
+  # Set replicas for production environment
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 2
+    target:
+      kind: Deployment
+  # Vault POD_INJECTION annotations for all deployments
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: not-used
+      spec:
+        template:
+          metadata:
+            annotations:
+              vault.hashicorp.com/agent-inject: "true"
+              vault.hashicorp.com/role: "poc-role"
+              vault.hashicorp.com/agent-inject-secret-db: "secret/data/poc/db"
+              vault.hashicorp.com/agent-inject-template-db: |
+                {{- with secret "secret/data/poc/db" -}}
+                export DB_PASSWORD="{{ .Data.data.password }}"
+                export DB_USERNAME="{{ .Data.data.username }}"
+                {{- end }}
+    target:
+      kind: Deployment

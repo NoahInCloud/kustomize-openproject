@@ -141,7 +141,7 @@ spec:
       enableServiceLinks: true
       containers:
         - name: memcached
-          image: docker.io/bitnami/memcached:1.6.29
+          image: docker.io/bitnami/memcached:latest
           imagePullPolicy: "IfNotPresent"
           securityContext:
             allowPrivilegeEscalation: false

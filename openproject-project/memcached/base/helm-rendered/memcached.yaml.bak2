@@ -50,7 +50,7 @@ spec:
 # Source: memcached/templates/serviceaccount.yaml
 apiVersion: v1
 kind: ServiceAccount
-automountServiceAccountToken: true
+automountServiceAccountToken: false
 metadata:
   name: poc-memcached
   namespace: default
@@ -117,7 +117,7 @@ spec:
       annotations:
     spec:
       
-      automountServiceAccountToken: true
+      automountServiceAccountToken: false
       affinity:
         podAffinity:
           

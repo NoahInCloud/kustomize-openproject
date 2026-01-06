@@ -5,8 +5,6 @@ namespace: lhw-openproject-prod
 
 resources:
   - ../../base
-  # Make sure you create this file to define the ServiceAccount!
-  - serviceaccount.yaml 
 
 labels:
   - pairs:

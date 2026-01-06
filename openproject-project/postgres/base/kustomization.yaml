@@ -5,7 +5,7 @@ resources:
   - helm-rendered/postgres.yaml
   - helm-rendered/postgres-backup-pvc.yaml
   - helm-rendered/postgres-backup-cronjob.yaml
-  - serviceaccount.yaml
+  - helm-rendered/serviceaccount.yaml
 
 labels:
   - pairs:
